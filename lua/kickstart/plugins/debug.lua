@@ -42,6 +42,7 @@ require('mason-nvim-dap').setup {
   ensure_installed = {
     -- Update this to ensure that you have the debuggers for the langs you want
     'delve',
+    'codelldb',
   },
 }
 
@@ -93,3 +94,31 @@ require('dap-go').setup {
     detached = vim.fn.has 'win32' == 0,
   },
 }
+
+dap.adapters.codelldb = {
+  type = 'server',
+  port = '${port}',
+  executable = {
+    -- Points to the mason-installed executable
+    command = vim.fn.stdpath 'data' .. '/mason/bin/codelldb',
+    args = { '--port', '${port}' },
+  },
+}
+
+dap.configurations.cpp = {
+  {
+    name = 'Launch file',
+    type = 'codelldb',
+    request = 'launch',
+    program = function()
+      -- Prompts you for the path to the executable when you hit F5
+      return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/', 'file')
+    end,
+    args = function() return vim.fn.input 'Arguments: ' end,
+    cwd = '${workspaceFolder}',
+    stopOnEntry = false,
+  },
+}
+
+dap.configurations.c = dap.configurations.cpp
+dap.configurations.rust = dap.configurations.cpp

@@ -99,7 +99,7 @@ do
   vim.g.maplocalleader = ' '
 
   -- Set to true if you have a Nerd Font installed and selected in the terminal
-  vim.g.have_nerd_font = false
+  vim.g.have_nerd_font = true
 
   -- [[ Setting options ]]
   --  See `:help vim.o`
@@ -158,6 +158,9 @@ do
   vim.o.list = true
   vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 
+  vim.opt.smartindent = true
+  vim.o.shiftwidth = 2
+
   -- Preview substitutions live, as you type!
   vim.o.inccommand = 'split'
 
@@ -194,8 +197,8 @@ do
     underline = { severity = { min = vim.diagnostic.severity.WARN } },
 
     -- Can switch between these as you prefer
-    virtual_text = true, -- Text shows up at the end of the line
-    virtual_lines = false, -- Text shows up underneath the line, with virtual lines
+    virtual_text = false, -- Text shows up at the end of the line
+    virtual_lines = true, -- Text shows up underneath the line, with virtual lines
 
     -- Auto open the float, so you can easily read the errors when jumping with `[d` and `]d`
     jump = {
@@ -217,7 +220,7 @@ do
   --
   -- NOTE: This won't work in all terminal emulators/tmux/etc. Try your own mapping
   -- or just use <C-\><C-n> to exit terminal mode
-  vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
+  vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n><C-^>', { desc = 'Exit terminal mode' })
 
   -- TIP: Disable arrow keys in normal mode
   -- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
@@ -250,6 +253,16 @@ do
     desc = 'Highlight when yanking (copying) text',
     group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
     callback = function() vim.hl.on_yank() end,
+  })
+
+  local group = vim.api.nvim_create_augroup('custom-cmds', { clear = true })
+
+  vim.api.nvim_create_autocmd({ 'TermOpen', 'BufEnter' }, {
+    desc = 'Automatically enter insert mode on builtin terminal enter',
+    group = group,
+    callback = function()
+      if vim.bo.buftype == 'terminal' then vim.cmd.startinsert() end
+    end,
   })
 end
 
@@ -434,15 +447,33 @@ do
   -- Load the colorscheme here.
   -- Like many other themes, this one has different styles, and you could load
   -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-  vim.cmd.colorscheme 'tokyonight-night'
 
-  -- Highlight todo, notes, etc in comments
-  vim.pack.add { gh 'folke/todo-comments.nvim' }
-  require('todo-comments').setup { signs = false }
+  vim.o.background = 'light'
+  vim.pack.add {
+    'https://github.com/ellisonleao/gruvbox.nvim',
+  }
+
+  require('gruvbox').setup()
+  vim.cmd.colorscheme 'gruvbox'
 
   -- [[ mini.nvim ]]
   --  A collection of various small independent plugins/modules
   vim.pack.add { gh 'nvim-mini/mini.nvim' }
+
+  -- Highlight todo, notes, colors, etc
+  local hipatterns = require 'mini.hipatterns'
+  hipatterns.setup {
+    highlighters = {
+      -- Highlight standalone 'FIXME', 'HACK', 'TODO', 'NOTE'
+      fixme = { pattern = '%f[%w]()FIXME()%f[%W]', group = 'MiniHipatternsFixme' },
+      hack = { pattern = '%f[%w]()HACK()%f[%W]', group = 'MiniHipatternsHack' },
+      todo = { pattern = '%f[%w]()TODO()%f[%W]', group = 'MiniHipatternsTodo' },
+      note = { pattern = '%f[%w]()NOTE()%f[%W]', group = 'MiniHipatternsNote' },
+
+      -- Highlight hex color strings (`#rrggbb`) using that color
+      hex_color = hipatterns.gen_highlighter.hex_color(),
+    },
+  }
 
   -- If a nerd font is available, load the icons module for pretty icons in various plugins.
   if vim.g.have_nerd_font then
@@ -464,6 +495,10 @@ do
       inside_next = 'ii',
     },
     n_lines = 500,
+    custom_textobjects = {
+      f = require('mini.ai').gen_spec.treesitter { a = '@function.outer', i = '@function.inner' },
+      c = require('mini.ai').gen_spec.treesitter { a = '@class.outer', i = '@class.inner' },
+    },
   }
 
   -- Add/delete/replace surroundings (brackets, quotes, etc.)
@@ -679,7 +714,7 @@ do
 
       -- Rename the variable under your cursor.
       --  Most Language Servers support renaming across files, etc.
-      map('grn', vim.lsp.buf.rename, '[R]e[n]ame')
+      map('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
 
       -- Execute a code action, usually your cursor needs to be on top of an error
       -- or a suggestion from your LSP for this to activate.
@@ -733,16 +768,32 @@ do
   --  See `:help lsp-config` for information about keys and how to configure
   ---@type table<string, vim.lsp.Config>
   local servers = {
-    -- clangd = {},
+    clangd = {},
+
+    qmlls = {
+      root_markers = { '.qmlls.ini' },
+    },
+    ruff = {
+      ---@type _.lspconfig.settings.
+      settings = {
+        showSyntaxErrors = false,
+        organizeImport = true,
+      },
+    },
+    ty = {
+      on_init = function(client) client.server_capabilities.documentFormattingProvider = false end,
+    },
     -- gopls = {},
     -- pyright = {},
-    -- tsc = {},
+    rust_analyzer = {},
     --
-    -- Some languages (like rust) have entire language plugins that can be useful:
-    --    https://github.com/mrcjkb/rustaceanvim
+    -- Some languages (like typescript) have entire language plugins that can be useful:
+    --    https://github.com/pmizio/typescript-tools.nvim
     --
-    -- But for many setups, the LSP (`rust_analyzer`) will work just fine
-    -- rust_analyzer = {},
+    -- But for many setups, the LSP (`ts_ls`) will work just fine
+    ts_ls = {},
+    html = {},
+    prettier = {},
 
     stylua = {}, -- Used to format Lua code
 
@@ -822,12 +873,16 @@ do
   -- [[ Formatting ]]
   vim.pack.add { gh 'stevearc/conform.nvim' }
   require('conform').setup {
-    notify_on_error = false,
+    notify_on_error = true,
     format_on_save = function(bufnr)
       -- You can specify filetypes to autoformat on save here:
       local enabled_filetypes = {
-        -- lua = true,
-        -- python = true,
+        lua = true,
+        python = true,
+        c = true,
+        cpp = true,
+        css = true,
+        rust = true,
       }
       if enabled_filetypes[vim.bo[bufnr].filetype] then
         return { timeout_ms = 500 }
@@ -840,6 +895,8 @@ do
     },
     -- You can also specify external formatters in here.
     formatters_by_ft = {
+      css = { 'prettier' },
+
       -- rust = { 'rustfmt' },
       -- Conform can also run multiple formatters sequentially
       -- python = { "isort", "black" },
@@ -945,7 +1002,10 @@ do
   --  See `:help nvim-treesitter-intro`
 
   -- NOTE: You can also specify a branch or a specific commit
-  vim.pack.add { { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' } }
+  vim.pack.add {
+    { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' },
+    { src = gh 'nvim-treesitter/nvim-treesitter-textobjects', version = 'main' },
+  }
 
   -- Ensure basic parsers are installed
   local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
@@ -1014,25 +1074,16 @@ do
   --  Here are some example plugins that I've included in the Kickstart repository.
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
-  -- require 'kickstart.plugins.debug'
-  -- require 'kickstart.plugins.indent_line'
-  -- require 'kickstart.plugins.lint'
-  -- require 'kickstart.plugins.autopairs'
-  -- require 'kickstart.plugins.neo-tree'
+  require 'kickstart.plugins.debug'
+  require 'kickstart.plugins.indent_line'
+  require 'kickstart.plugins.lint'
+  require 'kickstart.plugins.autopairs'
+  require 'kickstart.plugins.neo-tree'
 
   -- NOTE: You can add your own plugins, configuration, etc. in `lua/custom/plugins/*.lua`.
   --
-  -- For independent modules, uncomment the convenience loader:
-  -- require 'custom.plugins'
-  --
-  -- `custom.plugins` automatically loads files from that directory, but their
-  -- order is unspecified. If plugins depend on each other, keep them in the same
-  -- file and put their `vim.pack.add()` and `setup()` calls in the required order.
-  --
-  -- If separate modules need a specific order, require them explicitly instead:
-  -- require 'custom.plugins.colorscheme'
-  -- require 'custom.plugins.ui'
-  -- require 'custom.plugins.git'
+  --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
+  require 'custom.plugins'
 end
 
 -- The line beneath this is called `modeline`. See `:help modeline`
