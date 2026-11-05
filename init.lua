@@ -159,7 +159,8 @@ do
   vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 
   vim.opt.smartindent = true
-  vim.o.shiftwidth = 2
+  vim.o.shiftwidth = 4
+  vim.o.tabstop = 4
 
   -- Preview substitutions live, as you type!
   vim.o.inccommand = 'split'
@@ -794,6 +795,8 @@ do
     ts_ls = {},
     html = {},
     prettier = {},
+    phpactor = {},
+    postgres_lsp = {},
 
     stylua = {}, -- Used to format Lua code
 
@@ -896,6 +899,7 @@ do
     -- You can also specify external formatters in here.
     formatters_by_ft = {
       css = { 'prettier' },
+      php = { 'php_cs_fixer' },
 
       -- rust = { 'rustfmt' },
       -- Conform can also run multiple formatters sequentially
